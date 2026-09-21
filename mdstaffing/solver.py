@@ -114,6 +114,10 @@ class Scheduler:
             return False
         if shift.specialties and doc.specialty not in shift.specialties:
             return False
+        if shift.required_tags and not set(shift.required_tags).issubset(doc.tags):
+            return False
+        if shift.any_tags and not (set(shift.any_tags) & doc.tags):
+            return False
         if shift.required_skills and not doc.has_skills(shift.required_skills):
             return False
         for group in shift.any_skills:

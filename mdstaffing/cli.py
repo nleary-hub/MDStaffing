@@ -90,6 +90,11 @@ def cmd_explain(args) -> int:
                 bits.append("not on the allow-list")
             if shift.specialties and doc.specialty not in shift.specialties:
                 bits.append(f"specialty is {doc.specialty}")
+            missing_tags = set(shift.required_tags) - doc.tags
+            if missing_tags:
+                bits.append("not in group " + ", ".join(sorted(missing_tags)))
+            if shift.any_tags and not (set(shift.any_tags) & doc.tags):
+                bits.append("not in " + "/".join(sorted(shift.any_tags)))
             status = "; ".join(bits) or "not credentialed"
         else:
             reasons = scheduler.block_reasons(result.schedule, doc, shift, day, collect=True)

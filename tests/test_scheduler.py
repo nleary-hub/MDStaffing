@@ -256,6 +256,61 @@ def test_locked_assignment_is_kept(tmp_path):
     assert result.schedule.by_slot[(dt.date(2026, 3, 3), "LAB", 0)].physician_id == "b"
 
 
+def test_tag_restricted_duty_only_goes_to_that_group(tmp_path):
+    """Call pools are group membership, not credentialing."""
+    body = """
+        name: tags
+        period: {start: 2026-03-02, end: 2026-03-08}
+        physicians:
+          - {id: a, name: A, tags: [invasive], skills: [pci]}
+          - {id: b, name: B, tags: [invasive], skills: [pci]}
+          - {id: c, name: C, tags: [non_invasive]}
+          - {id: d, name: D, tags: [non_invasive]}
+        shifts:
+          - {id: STEMI_CALL, label: STEMI call, session: background, count: 1,
+             required_tags: [invasive],
+             when: {weekdays: [mon, tue, wed, thu, fri, sat, sun]}}
+          - {id: GEN_CALL, label: General call, session: background, count: 1,
+             required_tags: [non_invasive],
+             when: {weekdays: [mon, tue, wed, thu, fri, sat, sun]}}
+    """
+    result = solve(build(tmp_path, body))
+    stemi = {a.physician_id for a in result.schedule.assignments
+             if a.shift_id == "STEMI_CALL"}
+    general = {a.physician_id for a in result.schedule.assignments
+               if a.shift_id == "GEN_CALL"}
+    assert stemi == {"a", "b"}
+    assert general == {"c", "d"}
+    assert not result.hard_violations
+
+
+def test_unknown_required_tag_is_rejected(tmp_path):
+    body = BASE.replace("required_skills: [cath]", "required_tags: [invasive]")
+    with pytest.raises(ConfigError, match="required tag"):
+        build(tmp_path, body)
+
+
+def test_single_operator_duty_is_flagged_when_they_are_away(tmp_path):
+    """A one-deep procedure (e.g. the only TAVR operator) surfaces as a gap."""
+    body = """
+        name: solo
+        period: {start: 2026-03-02, end: 2026-03-06}
+        physicians:
+          - id: a
+            name: A
+            skills: [structural, pci]
+            unavailable: [{start: 2026-03-04, end: 2026-03-04}]
+          - {id: b, name: B, skills: [pci]}
+        shifts:
+          - {id: TAVR, label: TAVR, count: 1, required_skills: [structural],
+             when: {weekdays: [mon, tue, wed, thu, fri]}}
+    """
+    result = solve(build(tmp_path, body))
+    gaps = [v for v in result.hard_violations if v.kind == "unfilled"]
+    assert len(gaps) == 1
+    assert gaps[0].date == dt.date(2026, 3, 4)
+
+
 # --- fairness ---------------------------------------------------------------
 
 def test_equal_physicians_share_a_duty_evenly(tmp_path):

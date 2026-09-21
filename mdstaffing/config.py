@@ -90,6 +90,8 @@ def _shift(cfg: dict) -> ShiftDef:
         tier=int(cfg.get("tier", 2)),
         required_skills=as_list(cfg.get("required_skills")),
         any_skills=any_skills,
+        required_tags=as_list(cfg.get("required_tags")),
+        any_tags=as_list(cfg.get("any_tags")),
         specialties=as_list(cfg.get("specialties")),
         eligible=as_list(cfg.get("eligible")),
         min_count=int(cfg.get("count", cfg.get("min_count", 1))),
@@ -211,10 +213,17 @@ def validate(line: ServiceLine) -> None:
                 errors.append(f"{shift.id}: eligible lists unknown physician {pid!r}")
 
     all_skills = set().union(*[p.skills for p in line.physicians]) if line.physicians else set()
+    all_tags = set().union(*[p.tags for p in line.physicians]) if line.physicians else set()
     for shift in line.shifts:
         unknown = set(shift.required_skills) - all_skills
         if unknown:
             errors.append(f"{shift.id}: no physician holds required skill(s) {sorted(unknown)}")
+        unknown = set(shift.required_tags) - all_tags
+        if unknown:
+            errors.append(f"{shift.id}: no physician carries required tag(s) {sorted(unknown)}")
+        if shift.any_tags and not (set(shift.any_tags) & all_tags):
+            errors.append(f"{shift.id}: no physician carries any of the tags"
+                          f" {sorted(shift.any_tags)}")
     for rule in line.rules:
         for sid in rule.shift_ids:
             if sid not in line.shift_by_id:

@@ -230,6 +230,11 @@ class ShiftDef:
     required_skills: list[str] = field(default_factory=list)
     #: Any-of skill groups: physician must have >= 1 skill from each group.
     any_skills: list[list[str]] = field(default_factory=list)
+    #: Group membership rather than credentialing — "invasive", "ep",
+    #: "non_invasive". All listed tags must be present on the physician.
+    required_tags: list[str] = field(default_factory=list)
+    #: At least one of these tags must be present.
+    any_tags: list[str] = field(default_factory=list)
     specialties: list[str] = field(default_factory=list)
     eligible: list[str] = field(default_factory=list)  # explicit allow-list
     min_count: int = 1

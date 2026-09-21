@@ -6,6 +6,12 @@ some are credentialed for, medical directors with protected admin time, census r
 cap or floor how many of each kind of physician can be in each place on a given day, and a
 fairness rotation that has to hold up over a year rather than a month.
 
+`config/service_line.yaml` is seeded with a 19-physician cardiology division — 3
+electrophysiologists, 6 invasive cardiologists covering the cath lab and STEMI call (one
+of whom is the sole TAVR operator), and 10 non-invasive cardiologists covering diagnostic
+studies, inpatient consults and general cardiology call — plus a placeholder
+pulmonary/critical care group to replace with the real one.
+
 Everything is driven by one YAML file. No database, no service to run, no dependencies
 beyond PyYAML.
 
@@ -80,29 +86,35 @@ The ledger is written to JSON (`--ledger-out`) and read back on the next block
 ### Physicians
 
 ```yaml
-- id: c_alvarez
-  name: Ana Alvarez
+- id: inv_okonkwo
+  name: David Okonkwo
   specialty: cardiology
-  skills: [pci, cath, echo_read, ccu]     # credentialing — drives eligibility
-  tags: [medical_director]
+  skills: [cath, pci, stemi, structural]  # credentialing — drives eligibility
+  tags: [invasive, medical_director]      # group membership
   fte: 1.0
   max_clinical_days_per_week: 5
   max_consecutive_clinical_days: 7
   admin:
-    - label: Cath Lab Director admin
-      session: am
+    - label: Structural Program Director admin
+      session: pm
       hard: false                          # yields when coverage is short
       when: {weekdays: [fri]}
   unavailable:
-    - {start: 2026-10-05, end: 2026-10-16, reason: vacation}
+    - {start: 2026-11-16, end: 2026-11-20, reason: vacation}
   shift_weights:
-    CARD_CALL: 0                           # contractual opt-out; 0.5 = half share
+    GEN_CARD_CALL: 0                       # contractual opt-out; 0.5 = half share
     CARD_CONSULT: 0.5
-  excluded_shifts: [EP_LAB]
+  excluded_shifts: [EP_ABLATION]
 ```
 
 `skills` is a free vocabulary — whatever your service line credentials on
 (`pci`, `structural`, `ep_ablation`, `tee`, `nuclear_read`, `cardiac_ct`, `ebus`, `icu`, …).
+
+`tags` are group membership rather than credentialing: `invasive`, `ep`, `non_invasive`,
+`medical_director`. Use them for duties defined by which group covers them rather than by
+a procedure skill — the three separate call pools (STEMI call for the invasive group, EP
+call for the electrophysiologists, general cardiology call for the non-invasive group) are
+each a duty with `required_tags`. Census rules filter on tags too.
 
 ### Duties
 
@@ -116,8 +128,10 @@ The ledger is written to JSON (`--ledger-out`) and read back on the next block
   max_count: 2                # optional headroom above the minimum
   required_skills: [structural]
   any_skills: [[stress_echo, nuclear_read]]   # one from each inner group
+  required_tags: [invasive]                   # group membership, all required
+  any_tags: [invasive, ep]                    # or at least one of these
   specialties: [cardiology]
-  eligible: [c_barnes, c_chen]                # explicit allow-list
+  eligible: [inv_okonkwo, inv_whitfield]      # explicit allow-list
   fairness_group: structural  # duties that share a rotation share a group
   credit: 1.5                 # how heavily one assignment weighs in the rotation
   block_days: 7               # keep one physician on the service for a whole week
@@ -173,12 +187,12 @@ makes a duty unfillable, the gap is reported instead. `min` rules drive the back
 
 ```yaml
 requests:
-  - {physician: p_rao,   kind: off_hard,     start: 2026-10-05, end: 2026-10-09}
-  - {physician: c_kim,   kind: off_soft,     start: 2026-10-20, end: 2026-10-22, weight: 2}
-  - {physician: c_gupta, kind: prefer_shift, date: 2026-10-13, shift: TEE_SERVICE, weight: 3}
-  - {physician: c_jansen,kind: avoid_shift,  start: 2026-10-01, end: 2026-10-31, shift: CARD_CALL, weight: 3}
-  - {physician: c_eze,   kind: on_soft,      date: 2026-10-06, shift: EP_LAB, weight: 3}
-  - {physician: c_eze,   kind: on_hard,      date: 2026-10-06, shift: EP_LAB}
+  - {physician: ni_hart,    kind: off_hard,     start: 2026-11-25, end: 2026-11-27}
+  - {physician: inv_yun,    kind: off_soft,     start: 2026-11-16, end: 2026-11-18, weight: 2}
+  - {physician: ni_kwon,    kind: prefer_shift, date: 2026-11-10, shift: TEE_SERVICE, weight: 3}
+  - {physician: ni_adeyemi, kind: avoid_shift,  start: 2026-11-01, end: 2026-11-30, shift: GEN_CARD_CALL, weight: 3}
+  - {physician: ep_vasquez, kind: on_soft,      date: 2026-11-03, shift: LEAD_EXTRACTION, weight: 3}
+  - {physician: ep_vasquez, kind: on_hard,      date: 2026-11-03, shift: LEAD_EXTRACTION}
 ```
 
 `off_hard` and `on_hard` are commitments the solver may never break. The rest are weighted
@@ -201,16 +215,13 @@ preferences competing against fairness — raise `weight` to make one harder to 
 `explain` is the tool for arguing with the schedule:
 
 ```
-$ python -m mdstaffing explain config/service_line.yaml --date 2026-10-06 --shift CCU_SERVICE
-CCU service on Tue 2026-10-06 — assigned: Soo-Jin Kim
+$ python -m mdstaffing explain config/service_line.yaml --date 2026-11-25 --shift HF_SERVICE
+Heart failure service on Wed 2026-11-25 — assigned: (nobody)
 
 Physician                Eligible   Credit  Status
-Ana Alvarez              yes           4.0  would make 9 consecutive clinical days (cap 7)
-Dana Hollis              yes           3.0  already booked: Cardiology clinic
-Grant Farrow             no            0.0  lacks ccu
-Julia Moore              yes           3.0  already booked: Cath Lab (2 rooms)
-Priya Gupta              yes           8.0  already booked: TEE Service
-Soo-Jin Kim              yes           3.0  ASSIGNED
+Benjamin Hart            yes           9.0  approved time off: approved holiday leave
+Fatima Nasser            yes           9.0  would make 8 consecutive clinical days (cap 7)
+Thomas Reiner            no            0.0  lacks hf
 ```
 
 It names the real blocker — a credentialing gap, protected time, a census rule, a personal
@@ -265,7 +276,8 @@ python -m pytest tests -q
 ```
 
 `tests/test_scheduler.py` covers recurrence maths, config validation, every hard constraint
-(vacation, credentialing, admin time, census caps, double-booking, weekly caps, locked
-assignments), the fairness properties (equal split, FTE proportionality, vacation handling,
-carry-in ledger, opt-outs), block continuity, request handling, determinism, and an
-end-to-end run of the real service-line config.
+(vacation, credentialing, tag-restricted call pools, admin time, census caps,
+double-booking, weekly caps, locked assignments), the fairness properties (equal split,
+FTE proportionality, vacation handling, carry-in ledger, opt-outs), block continuity,
+single-operator gaps, request handling, determinism, and an end-to-end run of the real
+service-line config.
