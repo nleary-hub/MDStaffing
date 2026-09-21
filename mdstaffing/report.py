@@ -210,3 +210,83 @@ def text_summary(result: SolveResult) -> str:
     if len(hard) > 20:
         lines.append(f"    ... and {len(hard) - 20} more")
     return "\n".join(lines)
+
+
+def schedule_json(result: SolveResult) -> dict:
+    """Everything a viewer needs, in one serialisable structure."""
+    line = result.schedule.line
+    days = line.days()
+
+    def group_of(doc) -> str:
+        for tag in ("invasive", "ep", "non_invasive", "pulm"):
+            if tag in doc.tags:
+                return tag
+        return doc.specialty
+
+    equity: list[dict] = []
+    for row in equity_report(result)[1:]:
+        equity.append({
+            "group": row[0], "physician": row[1], "assigned": float(row[2]),
+            "expected": float(row[3]), "delta": float(row[4]),
+        })
+
+    return {
+        "name": line.name,
+        "start": line.start.isoformat(),
+        "end": line.end.isoformat(),
+        "days": [
+            {
+                "date": d.isoformat(),
+                "weekday": d.strftime("%a"),
+                "label": d.strftime("%-d"),
+                "month": d.strftime("%b"),
+                "weekend": d.weekday() >= 5,
+                "holiday": d in line.holidays,
+            }
+            for d in days
+        ],
+        "physicians": [
+            {
+                "id": p.id, "name": p.name, "specialty": p.specialty,
+                "group": group_of(p), "fte": p.fte, "skills": sorted(p.skills),
+                "tags": sorted(p.tags), "notes": p.notes,
+                "off": [
+                    {"date": d.isoformat(), "reason": p.is_unavailable(d)}
+                    for d in days if p.is_unavailable(d)
+                ],
+                "admin": [
+                    {"date": d.isoformat(), "label": b.label, "session": b.session,
+                     "hard": b.hard}
+                    for d in days for b in p.admin_sessions(d, line.holidays)
+                ],
+            }
+            for p in line.physicians
+        ],
+        "shifts": [
+            {
+                "id": s.id, "label": s.label, "location": s.location,
+                "session": s.session, "tier": s.tier,
+                "group": s.fairness_key(),
+                "days": [d.isoformat() for d in days
+                         if s.recurrence.matches(d, line.holidays)],
+            }
+            for s in line.shifts
+        ],
+        "assignments": [
+            {"date": a.date.isoformat(), "shift": a.shift_id,
+             "physician": a.physician_id, "reason": a.reason}
+            for a in result.schedule.assignments
+        ],
+        "violations": [
+            {"severity": v.severity, "date": v.date.isoformat() if v.date else None,
+             "kind": v.kind, "message": v.message}
+            for v in result.violations
+        ],
+        "equity": equity,
+    }
+
+
+def write_json(result: SolveResult, path: str | Path) -> None:
+    import json
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(json.dumps(schedule_json(result), separators=(",", ":")))

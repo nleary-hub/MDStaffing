@@ -6,7 +6,7 @@ import datetime as dt
 import sys
 from pathlib import Path
 
-from . import report
+from . import report, viewer
 from .config import load_service_line
 from .fairness import Ledger
 from .models import ConfigError, parse_date
@@ -43,12 +43,14 @@ def cmd_build(args) -> int:
     report.write_csv(report.violations_rows(result), out / "rule_check.csv")
     report.write_html(result, out / "schedule.html")
     report.write_ics(result, out / "schedule.ics")
+    report.write_json(result, out / "schedule.json")
+    viewer.write_viewer(result, out / "viewer.html")
     if args.ledger_out:
         result.ledger.save(args.ledger_out)
 
     print(report.text_summary(result))
-    print(f"\nWrote {out}/schedule.html, coverage.csv, by_physician.csv, equity.csv, "
-          f"rule_check.csv, schedule.ics")
+    print(f"\nWrote {out}/: viewer.html (interactive), schedule.html, coverage.csv,"
+          f" by_physician.csv, equity.csv, rule_check.csv, schedule.ics, schedule.json")
     if args.strict and result.hard_violations:
         return 2
     return 0
