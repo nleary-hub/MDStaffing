@@ -1,0 +1,667 @@
+# =============================================================================
+# Cardiovascular & Pulmonary Service Line — November 2026 block
+#
+# CARDIOLOGY ROSTER (19) reflects the real division structure:
+#   3  electrophysiologists          tag: ep
+#   6  invasive cardiologists        tag: invasive   (cath lab + STEMI call)
+#      └─ 1 of the 6 also does TAVR  skill: structural
+#  10  non-invasive cardiologists    tag: non_invasive
+#      (diagnostic studies, inpatient consults, general cardiology call)
+#
+# PULMONARY ROSTER (6) is still PLACEHOLDER seed data — replace with the real
+# pulmonary/critical care group. Everything below it is wired the same way.
+#
+#   python -m mdstaffing build config/service_line.yaml --out out
+# =============================================================================
+name: Cardiovascular & Pulmonary Service Line
+
+period:
+  start: 2026-11-01
+  end: 2026-11-30
+
+holidays:
+  - 2026-11-26        # Thanksgiving — clinics closed, hospital services run
+  - 2026-11-27
+
+settings:
+  default_fill_shift: CLINIC_CARD
+  max_background_per_day: 3     # a reading list and call can sit on a clinical day
+  daily_capacity: 1.0
+  repair_passes: 3
+  weights:
+    fairness: 10
+    weekend: 8
+    request: 12
+    soft_rule: 8
+
+# =============================================================================
+# PHYSICIANS
+# =============================================================================
+physicians:
+
+  # ---------------------------------------------------------------------------
+  # ELECTROPHYSIOLOGY (3) — ablations, device implants, device clinic, EP call
+  # ---------------------------------------------------------------------------
+  - id: ep_raman
+    name: Priya Raman
+    specialty: cardiology
+    tags: [ep, medical_director]
+    skills: [ep_ablation, ep_device, lead_extraction]
+    admin:
+      - label: EP Director admin
+        session: am
+        hard: false                      # yields when the lab is short
+        when: {weekdays: [mon]}
+    notes: Medical Director, Electrophysiology
+
+  - id: ep_vasquez
+    name: Elena Vasquez
+    specialty: cardiology
+    tags: [ep]
+    skills: [ep_ablation, ep_device, lead_extraction]
+
+  - id: ep_trent
+    name: Marcus Trent
+    specialty: cardiology
+    tags: [ep]
+    skills: [ep_ablation, ep_device]
+    unavailable:
+      - {start: 2026-11-09, end: 2026-11-13, reason: cme}
+
+  # ---------------------------------------------------------------------------
+  # INVASIVE CARDIOLOGY (6) — cath lab and STEMI call; one also runs TAVR
+  # ---------------------------------------------------------------------------
+  - id: inv_okonkwo
+    name: David Okonkwo
+    specialty: cardiology
+    tags: [invasive, medical_director]
+    skills: [cath, pci, stemi, structural, echo_read]
+    admin:
+      - label: Structural Program Director admin
+        session: pm
+        hard: false
+        when: {weekdays: [fri]}
+    notes: >
+      The only structural/TAVR operator. Single point of failure — TAVR days
+      cannot run while he is out. See the rule check when scheduling his leave.
+
+  - id: inv_whitfield
+    name: James Whitfield
+    specialty: cardiology
+    tags: [invasive, medical_director]
+    skills: [cath, pci, stemi]
+    admin:
+      - label: Cath Lab Director admin
+        session: am
+        hard: false
+        when: {weekdays: [thu]}
+    notes: Medical Director, Cardiac Cath Lab
+
+  - id: inv_lindqvist
+    name: Sarah Lindqvist
+    specialty: cardiology
+    tags: [invasive]
+    skills: [cath, pci, stemi, ccu]
+
+  - id: inv_belmonte
+    name: Ana Belmonte
+    specialty: cardiology
+    tags: [invasive]
+    skills: [cath, pci, stemi, peripheral]
+    unavailable:
+      - {start: 2026-11-16, end: 2026-11-20, reason: vacation}
+
+  - id: inv_malhotra
+    name: Raj Malhotra
+    specialty: cardiology
+    tags: [invasive]
+    skills: [cath, pci, stemi, ccu, echo_read]
+
+  - id: inv_yun
+    name: Grace Yun
+    specialty: cardiology
+    tags: [invasive]
+    skills: [cath, pci, stemi]
+    fte: 0.8
+    max_clinical_days_per_week: 4
+
+  # ---------------------------------------------------------------------------
+  # NON-INVASIVE CARDIOLOGY (10) — diagnostics, inpatient consults, general call
+  # ---------------------------------------------------------------------------
+  - id: ni_reiner
+    name: Thomas Reiner
+    specialty: cardiology
+    tags: [non_invasive, medical_director]
+    skills: [echo_read, tee, stress_echo]
+    admin:
+      - label: Echo Lab Director admin
+        session: am
+        when: {weekdays: [wed]}
+    notes: Medical Director, Echocardiography
+
+  - id: ni_sandoval
+    name: Peter Sandoval
+    specialty: cardiology
+    tags: [non_invasive, medical_director]
+    skills: [echo_read, cardiac_ct, cardiac_mr]
+    admin:
+      - label: Advanced Imaging Director admin
+        session: full
+        when: {weekdays: [fri]}
+    notes: Medical Director, Cardiac CT/MR
+
+  - id: ni_adeyemi
+    name: Michelle Adeyemi
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, nuclear_read, stress_echo]
+
+  - id: ni_kwon
+    name: Laura Kwon
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, tee, stress_echo, nuclear_read]
+    unavailable:
+      - {start: 2026-11-02, end: 2026-11-06, reason: vacation}
+
+  - id: ni_hart
+    name: Benjamin Hart
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, nuclear_read, hf, ccu]
+
+  - id: ni_nasser
+    name: Fatima Nasser
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, stress_echo, hf, ccu]
+
+  - id: ni_okafor
+    name: Daniel Okafor
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, nuclear_read, ccu]
+    fte: 0.8
+    max_clinical_days_per_week: 4
+
+  - id: ni_stone
+    name: Rebecca Stone
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, tee, cardiac_ct, ccu]
+    unavailable:
+      - {start: 2026-11-23, end: 2026-11-27, reason: vacation}
+
+  - id: ni_farouk
+    name: Nadia Farouk
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, cardiac_ct, cardiac_mr, ccu, hf]
+
+  - id: ni_petrov
+    name: Alan Petrov
+    specialty: cardiology
+    tags: [non_invasive]
+    skills: [echo_read, stress_echo, nuclear_read]
+    fte: 0.6
+    max_clinical_days_per_week: 3
+    shift_weights:
+      GEN_CARD_CALL: 0        # phased-retirement agreement: no call
+      CARD_CONSULT: 0.5       # half the usual share of the consult service
+
+  # ---------------------------------------------------------------------------
+  # PULMONARY / CRITICAL CARE (6) — PLACEHOLDER, replace with the real group
+  # ---------------------------------------------------------------------------
+  - id: p_mbeki
+    name: Thandi Mbeki
+    specialty: pulmonary
+    tags: [pulm, medical_director]
+    skills: [icu, bronch, ebus, pft_read]
+    admin:
+      - label: ICU Director admin
+        session: am
+        hard: false
+        when: {weekdays: [mon]}
+
+  - id: p_novak
+    name: Ivan Novak
+    specialty: pulmonary
+    tags: [pulm]
+    skills: [icu, bronch, pft_read]
+
+  - id: p_oyelaran
+    name: Bisi Oyelaran
+    specialty: pulmonary
+    tags: [pulm]
+    skills: [icu, bronch, ebus, pft_read]
+    unavailable:
+      - {start: 2026-11-09, end: 2026-11-13, reason: vacation}
+
+  - id: p_park
+    name: Hannah Park
+    specialty: pulmonary
+    tags: [pulm]
+    skills: [icu, bronch, pft_read]
+    fte: 0.8
+
+  - id: p_quinn
+    name: Terry Quinn
+    specialty: pulmonary
+    tags: [pulm]
+    skills: [icu, pft_read]
+
+  - id: p_rao
+    name: Vikram Rao
+    specialty: pulmonary
+    tags: [pulm]
+    skills: [bronch, ebus, pft_read, icu]
+    fte: 0.6
+    max_clinical_days_per_week: 3
+
+# =============================================================================
+# DUTIES
+#   tier 1 = procedural / diagnostic (scarce)
+#   tier 2 = core inpatient coverage and call
+#   tier 3 = residual clinic fill
+# =============================================================================
+shifts:
+
+  # ---- INVASIVE: cath lab and structural -------------------------------------
+  - id: CATH_LAB
+    label: Cath Lab (2 rooms)
+    location: hospital
+    tier: 1
+    count: 2
+    max_count: 3
+    required_skills: [pci]
+    fairness_group: cath
+    when:
+      weekdays: [mon, tue, wed, thu, fri]
+      exclude_dates: [2026-11-11, 2026-11-25]   # hybrid room in use for TAVR
+
+  - id: CATH_LAB_TAVR_DAY
+    label: Cath Lab (1 room, TAVR day)
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [pci]
+    fairness_group: cath
+    when: {dates: [2026-11-11, 2026-11-25]}
+
+  - id: STRUCTURAL_TAVR
+    label: TAVR — primary operator
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [structural]
+    fairness_group: structural
+    credit: 1.5
+    when:
+      nth_weekday_of_month:
+        - {week: 2, weekday: wed}
+        - {week: 4, weekday: wed}
+
+  - id: TAVR_CO_OP
+    label: TAVR — co-operator
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [pci]
+    fairness_group: tavr_co_op
+    when:
+      nth_weekday_of_month:
+        - {week: 2, weekday: wed}
+        - {week: 4, weekday: wed}
+
+  - id: PERIPHERAL_LAB
+    label: Peripheral vascular lab
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [peripheral]
+    fairness_group: peripheral
+    hard: false                 # runs only when the operator is available
+    when: {weekdays: [tue]}
+
+  # ---- EP ---------------------------------------------------------------------
+  - id: EP_ABLATION
+    label: EP Lab — ablation
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [ep_ablation]
+    fairness_group: ep_lab
+    when: {weekdays: [mon, tue, thu]}
+
+  - id: DEVICE_IMPLANT
+    label: EP Lab — device implant
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [ep_device]
+    fairness_group: ep_lab
+    when: {weekdays: [wed, fri]}
+
+  - id: LEAD_EXTRACTION
+    label: Lead extraction
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [lead_extraction]
+    fairness_group: ep_lab
+    credit: 1.5
+    when:
+      nth_weekday_of_month:
+        - {week: 1, weekday: tue}
+
+  - id: DEVICE_CLINIC
+    label: Device Clinic
+    location: clinic
+    session: pm
+    tier: 1
+    count: 1
+    required_skills: [ep_device]
+    fairness_group: device_clinic
+    when: {weekdays: [tue, thu]}
+
+  # ---- NON-INVASIVE: diagnostic studies ---------------------------------------
+  - id: TEE_SERVICE
+    label: TEE Service
+    location: hospital
+    session: am
+    tier: 1
+    count: 1
+    required_skills: [tee]
+    fairness_group: tee
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: STRESS_LAB
+    label: Stress Lab
+    location: hospital
+    session: am
+    tier: 1
+    count: 1
+    any_skills:
+      - [stress_echo, nuclear_read]
+    fairness_group: stress
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: ECHO_READ
+    label: Echo reading list
+    location: hospital
+    session: background
+    tier: 1
+    count: 2
+    required_skills: [echo_read]
+    fairness_group: echo
+    credit: 0.5
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: NUCLEAR_READ
+    label: Nuclear reading list
+    location: hospital
+    session: background
+    tier: 1
+    count: 1
+    required_skills: [nuclear_read]
+    fairness_group: nuclear
+    credit: 0.5
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: CARDIAC_CT_READ
+    label: Cardiac CT reading
+    location: remote
+    session: background
+    tier: 1
+    count: 1
+    required_skills: [cardiac_ct]
+    fairness_group: cardiac_ct
+    credit: 0.5
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: CARDIAC_MR_READ
+    label: Cardiac MR reading
+    location: remote
+    session: background
+    tier: 1
+    count: 1
+    required_skills: [cardiac_mr]
+    fairness_group: cardiac_mr
+    credit: 0.5
+    when: {weekdays: [tue, thu]}
+
+  # ---- CORE INPATIENT COVERAGE -------------------------------------------------
+  - id: CARD_CONSULT
+    label: Cardiology consult service
+    location: hospital
+    tier: 2
+    count: 1
+    required_tags: [non_invasive]
+    fairness_group: consults
+    block_days: 7
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: CCU_SERVICE
+    label: CCU service
+    location: hospital
+    tier: 2
+    count: 1
+    required_skills: [ccu]
+    fairness_group: ccu
+    block_days: 7
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: HF_SERVICE
+    label: Heart failure service
+    location: hospital
+    tier: 2
+    count: 1
+    required_skills: [hf]
+    fairness_group: hf
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  # ---- CALL: three separate pools ----------------------------------------------
+  - id: STEMI_CALL
+    label: STEMI / interventional call
+    location: hospital
+    session: background
+    tier: 2
+    count: 1
+    required_skills: [stemi]
+    fairness_group: stemi_call
+    credit: 2.0
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: GEN_CARD_CALL
+    label: General cardiology call
+    location: hospital
+    session: background
+    tier: 2
+    count: 1
+    required_tags: [non_invasive]
+    fairness_group: gen_call
+    credit: 2.0
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: EP_CALL
+    label: EP call
+    location: hospital
+    session: background
+    tier: 2
+    count: 1
+    required_tags: [ep]
+    fairness_group: ep_call
+    credit: 2.0
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  # ---- CLINIC -------------------------------------------------------------------
+  - id: CLINIC_CARD
+    label: Cardiology clinic
+    location: clinic
+    tier: 3
+    count: 4
+    max_count: 14
+    specialties: [cardiology]
+    fairness_group: clinic_card
+    credit: 0.25
+    hard: false
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  # ---- PULMONARY (placeholder) ----------------------------------------------------
+  - id: ICU_SERVICE
+    label: ICU service
+    location: hospital
+    tier: 2
+    count: 1
+    required_skills: [icu]
+    fairness_group: icu
+    block_days: 7
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: PULM_CONSULT
+    label: Pulmonary consult service
+    location: hospital
+    tier: 2
+    count: 1
+    specialties: [pulmonary]
+    fairness_group: pulm_consults
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: PULM_CALL
+    label: Pulmonary call
+    location: hospital
+    session: background
+    tier: 2
+    count: 1
+    specialties: [pulmonary]
+    fairness_group: pulm_call
+    credit: 2.0
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: BRONCH_SUITE
+    label: Bronchoscopy suite
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [bronch]
+    fairness_group: bronch
+    when: {weekdays: [mon, wed]}
+
+  - id: EBUS
+    label: EBUS / advanced airway
+    location: hospital
+    tier: 1
+    count: 1
+    required_skills: [ebus]
+    fairness_group: bronch
+    when: {weekdays: [fri]}
+
+  - id: PFT_READ
+    label: PFT reading list
+    location: remote
+    session: background
+    tier: 1
+    count: 1
+    required_skills: [pft_read]
+    fairness_group: pft
+    credit: 0.5
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: CLINIC_PULM
+    label: Pulmonary clinic
+    location: clinic
+    tier: 3
+    count: 1
+    max_count: 4
+    specialties: [pulmonary]
+    fairness_group: clinic_pulm
+    credit: 0.25
+    hard: false
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+# =============================================================================
+# CENSUS RULES — evaluated per day across the whole service line
+# =============================================================================
+rules:
+  - id: echo_reader_on_site
+    description: an echo reader must be physically in the hospital every weekday
+    locations: [hospital]
+    sessions: [full, am, pm]        # reading lists are background, not presence
+    any_skills: [echo_read]
+    specialties: [cardiology]
+    min: 1
+    severity: hard
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: hospital_cardiology_cap
+    description: no more than 10 cardiologists physically in the hospital in one day
+    locations: [hospital]
+    sessions: [full, am, pm]
+    specialties: [cardiology]
+    max: 10
+    severity: hard
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: invasive_hospital_cap
+    description: keep no more than 4 of the 6 invasive cardiologists in the hospital
+    locations: [hospital]
+    sessions: [full, am, pm]
+    tags: [invasive]
+    max: 4
+    severity: soft
+    weight: 2
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: invasive_clinic_access
+    description: keep at least one invasive cardiologist in clinic for referrals
+    locations: [clinic]
+    tags: [invasive]
+    min: 1
+    severity: soft
+    weight: 2
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: ep_presence
+    description: at least one EP physician working somewhere each weekday
+    tags: [ep]
+    min: 1
+    severity: soft
+    weight: 2
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: clinic_cardiology_floor
+    description: clinic access target — at least 6 cardiology clinic sessions/day
+    locations: [clinic]
+    specialties: [cardiology]
+    min: 6
+    severity: soft
+    weight: 3
+    when: {weekdays: [mon, tue, wed, thu, fri]}
+
+  - id: pulmonary_hospital_cap
+    description: keep no more than 3 pulmonologists in the hospital at once
+    locations: [hospital]
+    sessions: [full, am, pm]
+    specialties: [pulmonary]
+    max: 3
+    severity: soft
+    weight: 2
+    when: {weekdays: [mon, tue, wed, thu, fri, sat, sun], include_holidays: true}
+
+  - id: weekend_hospital_floor
+    description: weekend and holiday hospital coverage across both specialties
+    locations: [hospital]
+    sessions: [full, am, pm]
+    min: 3
+    severity: hard
+    when: {weekdays: [sat, sun], include_holidays: true}
+
+# =============================================================================
+# REQUESTS — off_hard / on_hard are commitments the solver may never break
+# =============================================================================
+requests:
+  - {physician: ni_hart,    kind: off_hard,     start: 2026-11-25, end: 2026-11-27, note: approved holiday leave}
+  - {physician: inv_yun,    kind: off_soft,     start: 2026-11-16, end: 2026-11-18, weight: 2, note: prefers off}
+  - {physician: ni_kwon,    kind: prefer_shift, date: 2026-11-10, shift: TEE_SERVICE, weight: 3}
+  - {physician: ni_adeyemi, kind: avoid_shift,  start: 2026-11-01, end: 2026-11-30, shift: GEN_CARD_CALL, weight: 3}
+  - {physician: ep_vasquez, kind: on_soft,      date: 2026-11-03, shift: LEAD_EXTRACTION, weight: 3}
